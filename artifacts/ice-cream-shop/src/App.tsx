@@ -2,7 +2,9 @@ import { useCallback, useState } from "react";
 import { Home } from "./components/Home";
 import { MenuBoard } from "./components/MenuBoard";
 import { Shop } from "./pages/Shop";
-import { eraseAllProgress, loadHearts } from "./game/save";
+import { isLevel } from "./game/levels";
+import type { Level } from "./game/levels";
+import { eraseAllProgress, loadHearts, loadLevel, storeLevel } from "./game/save";
 import { useStoredFlag } from "./hooks/useStoredFlag";
 import { audio } from "./audio/engine";
 
@@ -11,9 +13,17 @@ type Screen = "home" | "shop" | "menu";
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [hearts, setHearts] = useState<number>(loadHearts);
+  const [level, setLevelState] = useState<Level>(loadLevel);
   const [helper, setHelper] = useStoredFlag("ice-cream-helper", true);
-  const [smallOrders, setSmallOrders] = useStoredFlag("ice-cream-small", false);
   const [run, setRun] = useState(0);
+
+  const setLevel = useCallback((l: Level) => {
+    if (!isLevel(l)) return;
+    audio.unlock();
+    audio.playTick();
+    storeLevel(l);
+    setLevelState(l);
+  }, []);
 
   const handlePlay = useCallback(() => {
     audio.unlock();
@@ -29,7 +39,7 @@ export default function App() {
   }, []);
 
   if (screen === "shop") {
-    return <Shop key={run} hearts={hearts} onHearts={setHearts} helper={helper} smallOrders={smallOrders} onHome={handleHome} />;
+    return <Shop key={run} hearts={hearts} onHearts={setHearts} helper={helper} level={level} onHome={handleHome} />;
   }
   if (screen === "menu") {
     return <MenuBoard hearts={hearts} onBack={handleHome} />;
@@ -37,6 +47,8 @@ export default function App() {
   return (
     <Home
       hearts={hearts}
+      level={level}
+      onLevel={setLevel}
       onPlay={handlePlay}
       onMenu={() => {
         audio.unlock();
@@ -44,9 +56,7 @@ export default function App() {
         setScreen("menu");
       }}
       helper={helper}
-      smallOrders={smallOrders}
       onToggleHelper={() => setHelper(v => !v)}
-      onToggleSmall={() => setSmallOrders(v => !v)}
       onEraseAll={handleEraseAll}
     />
   );

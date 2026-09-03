@@ -2,9 +2,10 @@
  * The rules of the shop. Pure functions, no DOM.
  *
  * A customer asks for an Order; the player assembles a Build by tapping a
- * cone, then scoops, then toppings. Scoop order does not matter (a toddler
- * counting "two pink, one brown" should not be told off for stacking them the
- * other way round), and neither does topping order.
+ * cone, then scoops, then toppings. On Easy the scoop order does not matter
+ * (a toddler counting "two pink, one brown" should not be told off for
+ * stacking them the other way round). On Medium and Hard the stack has to
+ * match bottom to top. Topping order never matters.
  */
 import type { ConeId, CustomerId, FlavorId, ToppingId } from "./catalog.ts";
 import { unlocked } from "./rewards.ts";
@@ -83,9 +84,14 @@ function sameMultiset(a: string[], b: string[]): boolean {
   return sa.every((x, i) => x === sb[i]);
 }
 
-/** True when the build is exactly what was ordered, in any stacking order. */
-export function matches(order: Order, b: Build): boolean {
-  return b.cone === order.cone && sameMultiset(order.scoops, b.scoops) && sameMultiset(order.toppings, b.toppings);
+function sameList(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
+/** True when the build is what was ordered. With `orderMatters` the scoops must be stacked as shown. */
+export function matches(order: Order, b: Build, orderMatters = false): boolean {
+  if (b.cone !== order.cone || !sameMultiset(order.toppings, b.toppings)) return false;
+  return orderMatters ? sameList(order.scoops, b.scoops) : sameMultiset(order.scoops, b.scoops);
 }
 
 const count = <T>(xs: T[], x: T) => xs.filter(y => y === x).length;
@@ -94,12 +100,19 @@ const count = <T>(xs: T[], x: T) => xs.filter(y => y === x).length;
  * Would adding this item move the build towards the order? Used by the
  * little helper to light up the right things and dim the rest.
  */
-export function isUseful(order: Order, b: Build, item: Item): boolean {
+export function isUseful(order: Order, b: Build, item: Item, orderMatters = false): boolean {
   switch (item.kind) {
     case "cone":
       return b.cone !== item.id && item.id === order.cone;
-    case "scoop":
-      return b.cone !== null && b.scoops.length < order.scoops.length && count(b.scoops, item.id) < count(order.scoops, item.id);
+    case "scoop": {
+      if (b.cone === null || b.scoops.length >= order.scoops.length) return false;
+      if (orderMatters) {
+        // Only helps when what is already stacked is right so far.
+        const prefixOk = b.scoops.every((s, i) => s === order.scoops[i]);
+        return prefixOk && order.scoops[b.scoops.length] === item.id;
+      }
+      return count(b.scoops, item.id) < count(order.scoops, item.id);
+    }
     case "topping":
       return (
         b.scoops.length > 0 &&
@@ -111,13 +124,17 @@ export function isUseful(order: Order, b: Build, item: Item): boolean {
 }
 
 /** A tap that the helper would refuse: either it cannot go on, or it is not what was ordered. */
-export function helperAllows(order: Order, b: Build, item: Item): boolean {
-  return addItem(b, item) !== null && isUseful(order, b, item);
+export function helperAllows(order: Order, b: Build, item: Item, orderMatters = false): boolean {
+  return addItem(b, item) !== null && isUseful(order, b, item, orderMatters);
 }
 
 export interface OrderOptions {
   /** Cap on scoops, 1 to MAX_SCOOPS. */
   maxScoops?: number;
+  /** Floor on scoops once past the first ten customers. */
+  minScoops?: number;
+  /** Cap on toppings, 0 to MAX_TOPPINGS. */
+  maxToppings?: number;
   /** Make sure the order uses this (the thing just unlocked). */
   mustInclude?: RewardItem;
 }
@@ -135,6 +152,8 @@ function pick<T>(rng: Rng, xs: T[]): T {
 export function makeOrder(rng: Rng, hearts: number, opts: OrderOptions = {}): Order {
   const have = unlocked(hearts);
   const maxScoops = Math.max(1, Math.min(MAX_SCOOPS, opts.maxScoops ?? MAX_SCOOPS));
+  const minScoops = hearts >= 10 ? Math.max(1, Math.min(maxScoops, opts.minScoops ?? 1)) : 1;
+  const maxToppings = Math.max(0, Math.min(MAX_TOPPINGS, opts.maxToppings ?? MAX_TOPPINGS));
 
   let n = 1;
   if (hearts >= 30) {
@@ -143,19 +162,19 @@ export function makeOrder(rng: Rng, hearts: number, opts: OrderOptions = {}): Or
   } else if (hearts >= 10) {
     n = rng() < 0.6 ? 1 : 2;
   }
-  n = Math.min(n, maxScoops);
+  n = Math.max(minScoops, Math.min(n, maxScoops));
 
   const cone = pick(rng, have.cones);
   const scoops: FlavorId[] = [];
   for (let i = 0; i < n; i++) scoops.push(pick(rng, have.flavors));
 
   const toppings: ToppingId[] = [];
-  if (have.toppings.length > 0) {
+  if (have.toppings.length > 0 && maxToppings > 0) {
     const r = rng();
     let t = 0;
     if (hearts >= 50) t = r < 0.4 ? 0 : r < 0.8 ? 1 : 2;
     else t = r < 0.5 ? 0 : 1;
-    t = Math.min(t, have.toppings.length, MAX_TOPPINGS);
+    t = Math.min(t, have.toppings.length, maxToppings);
     const pool = [...have.toppings];
     for (let i = 0; i < t; i++) {
       const c = pick(rng, pool);
@@ -170,17 +189,18 @@ export function makeOrder(rng: Rng, hearts: number, opts: OrderOptions = {}): Or
     if (must.kind === "cone") order.cone = must.id;
     if (must.kind === "flavor" && !scoops.includes(must.id)) scoops[0] = must.id;
     if (must.kind === "topping" && !toppings.includes(must.id)) {
-      if (toppings.length < MAX_TOPPINGS) toppings.push(must.id);
+      if (toppings.length < Math.max(1, maxToppings)) toppings.push(must.id);
       else toppings[0] = must.id;
     }
   }
   return order;
 }
 
-/** Who comes in next: any unlocked friend except the one who just left. */
-export function pickCustomer(rng: Rng, hearts: number, last: CustomerId | null): CustomerId {
-  const pool = unlocked(hearts).customers.filter(c => c !== last);
-  return pick(rng, pool.length > 0 ? pool : unlocked(hearts).customers);
+/** Who comes in next: any unlocked friend not already at the counter. */
+export function pickCustomer(rng: Rng, hearts: number, exclude: (CustomerId | null)[]): CustomerId {
+  const all = unlocked(hearts).customers;
+  const pool = all.filter(c => !exclude.includes(c));
+  return pick(rng, pool.length > 0 ? pool : all);
 }
 
 /** Small seeded generator for tests. */

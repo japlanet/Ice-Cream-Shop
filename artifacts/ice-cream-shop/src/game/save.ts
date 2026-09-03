@@ -2,6 +2,9 @@
  * Hearts (happy customers so far) live in localStorage so the shop keeps
  * everything it has earned between visits.
  */
+import { isLevel } from "./levels.ts";
+import type { Level } from "./levels.ts";
+
 const PREFIX = "ice-cream-";
 export const HEARTS_KEY = PREFIX + "hearts";
 
@@ -41,5 +44,22 @@ export function eraseAllProgress(): void {
       if (k && k.startsWith(PREFIX)) keys.push(k);
     }
     for (const k of keys) s.removeItem(k);
+  } catch {}
+}
+
+export const LEVEL_KEY = PREFIX + "level";
+
+export function loadLevel(): Level {
+  try {
+    const n = Number(storage()?.getItem(LEVEL_KEY));
+    return isLevel(n) ? n : 1;
+  } catch {
+    return 1;
+  }
+}
+
+export function storeLevel(level: Level): void {
+  try {
+    storage()?.setItem(LEVEL_KEY, String(level));
   } catch {}
 }

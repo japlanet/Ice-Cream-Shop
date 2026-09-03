@@ -2,7 +2,7 @@ import { CONES, FLAVORS, TOPPINGS } from "@/game/catalog";
 import { helperAllows } from "@/game/engine";
 import type { Build, Item, Order } from "@/game/engine";
 import type { Unlocked } from "@/game/rewards";
-import { ConeIcon, ScoopIcon, ToppingIcon } from "./IceCreamView";
+import { ConeIcon, JarIcon, TubIcon } from "./IceCreamView";
 
 interface PaletteProps {
   have: Unlocked;
@@ -10,6 +10,7 @@ interface PaletteProps {
   build: Build;
   /** The little helper: only what the order needs lights up. */
   helper: boolean;
+  orderMatters: boolean;
   disabled: boolean;
   /** Item that was just refused, so it can wobble. */
   nope: string | null;
@@ -18,8 +19,8 @@ interface PaletteProps {
 
 export const itemKey = (item: Item) => item.kind + ":" + item.id;
 
-/** The trays of cones, scoops and toppings along the bottom. Tap to add. */
-export function Palette({ have, order, build, helper, disabled, nope, onTap }: PaletteProps) {
+/** The freezer cabinet along the bottom: cones, tubs of ice cream, jars of toppings. Tap to add. */
+export function Palette({ have, order, build, helper, orderMatters, disabled, nope, onTap }: PaletteProps) {
   const items: { label: string; list: Item[] }[] = [
     { label: "Cones", list: have.cones.map(id => ({ kind: "cone", id })) },
     { label: "Ice cream", list: have.flavors.map(id => ({ kind: "scoop", id })) },
@@ -33,7 +34,7 @@ export function Palette({ have, order, build, helper, disabled, nope, onTap }: P
         .map(row => (
           <div key={row.label} className="tray-row" role="group" aria-label={row.label}>
             {row.list.map(item => {
-              const useful = order ? helperAllows(order, build, item) : false;
+              const useful = order ? helperAllows(order, build, item, orderMatters) : false;
               const dim = helper && order !== null && !useful;
               const key = itemKey(item);
               return (
@@ -42,12 +43,12 @@ export function Palette({ have, order, build, helper, disabled, nope, onTap }: P
                   type="button"
                   disabled={disabled}
                   onClick={() => onTap(item)}
-                  className={`tray-item candy ${dim ? "is-dim" : ""} ${helper && useful ? "is-hint" : ""} ${nope === key ? "is-nope" : ""}`}
+                  className={`tray-item candy tray-${item.kind} ${dim ? "is-dim" : ""} ${helper && useful ? "is-hint" : ""} ${nope === key ? "is-nope" : ""}`}
                   aria-label={name(item)}
                 >
                   {item.kind === "cone" && <ConeIcon cone={item.id} className="tray-icon" />}
-                  {item.kind === "scoop" && <ScoopIcon flavor={item.id} className="tray-icon" />}
-                  {item.kind === "topping" && <ToppingIcon topping={item.id} className="tray-icon" />}
+                  {item.kind === "scoop" && <TubIcon flavor={item.id} className="tray-icon" />}
+                  {item.kind === "topping" && <JarIcon topping={item.id} className="tray-icon" />}
                 </button>
               );
             })}

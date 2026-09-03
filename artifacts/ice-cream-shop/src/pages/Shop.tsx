@@ -8,6 +8,8 @@ import { RewardPopup } from "@/components/RewardPopup";
 import type { CustomerId } from "@/game/catalog";
 import { addItem, emptyBuild, helperAllows, isEmpty, makeOrder, matches, pickCustomer, undo } from "@/game/engine";
 import type { Build, Item, Order } from "@/game/engine";
+import { LEVELS } from "@/game/levels";
+import type { Level } from "@/game/levels";
 import { rewardsBetween, unlocked } from "@/game/rewards";
 import type { Reward, RewardItem } from "@/game/rewards";
 import { storeHearts } from "@/game/save";
@@ -18,7 +20,7 @@ interface ShopProps {
   hearts: number;
   onHearts: (hearts: number) => void;
   helper: boolean;
-  smallOrders: boolean;
+  level: Level;
   onHome: () => void;
 }
 
@@ -33,26 +35,30 @@ const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 const rng = () => Math.random();
 
 interface Visit {
+  key: number;
   customer: CustomerId;
   order: Order;
   /** Hearts when the friend came in: the trays only change after a reward has been shown. */
   hearts: number;
+  phase: Phase;
+  hmm: boolean;
 }
 
-/** The shop: a friend at the counter, the ice cream being made, the trays. No timer, ever. */
-export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProps) {
-  const [visit, setVisit] = useState<Visit | null>(null);
-  const [phase, setPhase] = useState<Phase>("arriving");
+/** The shop: friends at the counter, the ice cream being made, the trays. No timer, ever. */
+export function Shop({ hearts, onHearts, helper, level, onHome }: ShopProps) {
+  const spec = LEVELS[level];
+  const [visits, setVisits] = useState<Visit[]>([]);
   const [build, setBuild] = useState<Build>(emptyBuild);
-  const [hmm, setHmm] = useState(false);
   const [nope, setNope] = useState<string | null>(null);
   const [bellShake, setBellShake] = useState(false);
+  const [flyTo, setFlyTo] = useState(0);
   const [reward, setReward] = useState<Reward | null>(null);
   const [sfx, setSfx] = useStoredFlag("ice-cream-sfx", true);
   const [music, setMusic] = useStoredFlag("ice-cream-music", true);
 
   const heartsRef = useRef(hearts);
-  const lastCustomer = useRef<CustomerId | null>(null);
+  const visitsRef = useRef<Visit[]>([]);
+  const nextKey = useRef(1);
   const busy = useRef(false);
   const alive = useRef(true);
   const nopeTimer = useRef<number | null>(null);
@@ -63,6 +69,16 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
       alive.current = false;
     };
   }, []);
+
+  const updateVisits = useCallback((f: (vs: Visit[]) => Visit[]) => {
+    visitsRef.current = f(visitsRef.current);
+    setVisits(visitsRef.current);
+  }, []);
+
+  const patch = useCallback(
+    (key: number, change: Partial<Visit>) => updateVisits(vs => vs.map(v => (v.key === key ? { ...v, ...change } : v))),
+    [updateVisits],
+  );
 
   // ---- sound ---------------------------------------------------------------
 
@@ -86,29 +102,43 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
   const bringCustomer = useCallback(
     async (mustInclude?: RewardItem) => {
       const h = heartsRef.current;
-      const customer = pickCustomer(rng, h, lastCustomer.current);
-      lastCustomer.current = customer;
-      const order = makeOrder(rng, h, { maxScoops: smallOrders ? 2 : 3, mustInclude });
-      setVisit({ customer, order, hearts: h });
-      setBuild(emptyBuild());
-      setHmm(false);
-      setPhase("arriving");
+      const here = visitsRef.current.map(v => v.customer);
+      const customer = pickCustomer(rng, h, here);
+      const order = makeOrder(rng, h, { maxScoops: spec.maxScoops, minScoops: spec.minScoops, maxToppings: spec.maxToppings, mustInclude });
+      const key = nextKey.current++;
+      updateVisits(vs => [...vs, { key, customer, order, hearts: h, phase: "arriving", hmm: false }]);
       audio.playDoor();
       await sleep(ARRIVE_MS);
       if (!alive.current) return;
-      setPhase("order");
+      patch(key, { phase: "order" });
+    },
+    [spec, updateVisits, patch],
+  );
+
+  /** Keep the counter as full as the level wants. */
+  const fill = useCallback(
+    async (mustInclude?: RewardItem) => {
+      let first = true;
+      while (visitsRef.current.length < spec.queue) {
+        await bringCustomer(first ? mustInclude : undefined);
+        first = false;
+        if (!alive.current) return;
+      }
       busy.current = false;
     },
-    [smallOrders],
+    [spec.queue, bringCustomer],
   );
 
   useEffect(() => {
-    void bringCustomer();
+    busy.current = true;
+    void fill();
     // Only on mount: later visits are started by the serve flow.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ---- building ------------------------------------------------------------
+
+  const front = visits.find(v => v.phase === "order") ?? null;
 
   const refuse = useCallback((item: Item) => {
     audio.playNope();
@@ -119,9 +149,9 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
 
   const tapItem = useCallback(
     (item: Item) => {
-      if (!visit || phase !== "order" || busy.current) return;
+      if (!front || busy.current) return;
       audio.unlock();
-      if (helper && !helperAllows(visit.order, build, item)) {
+      if (helper && !helperAllows(front.order, build, item, spec.orderMatters)) {
         refuse(item);
         return;
       }
@@ -135,11 +165,11 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
       else if (item.kind === "scoop") audio.playScoop(next.scoops.length - 1);
       else audio.playTopping();
     },
-    [visit, phase, helper, build, refuse],
+    [front, helper, build, spec.orderMatters, refuse],
   );
 
   const tapUndo = useCallback(() => {
-    if (phase !== "order" || busy.current) return;
+    if (!front || busy.current) return;
     audio.unlock();
     if (isEmpty(build)) {
       audio.playNope();
@@ -147,12 +177,12 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
     }
     audio.playTick();
     setBuild(undo(build));
-  }, [phase, build]);
+  }, [front, build]);
 
   // ---- serving -------------------------------------------------------------
 
   const serve = useCallback(async () => {
-    if (!visit || phase !== "order" || busy.current) return;
+    if (!front || busy.current) return;
     audio.unlock();
     if (isEmpty(build)) {
       audio.playNope();
@@ -163,18 +193,21 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
     }
     busy.current = true;
 
-    if (!matches(visit.order, build)) {
-      // Not quite. The friend looks puzzled and shows the order again. Nothing is lost.
+    // Any waiting friend whose order this is may have it.
+    const target = visitsRef.current.find(v => v.phase === "order" && matches(v.order, build, spec.orderMatters));
+    if (!target) {
+      // Not quite. The friend at the front looks puzzled and shows the order again. Nothing is lost.
       audio.playHmm();
-      setHmm(true);
+      patch(front.key, { hmm: true });
       await sleep(HMM_MS);
       if (!alive.current) return;
-      setHmm(false);
+      patch(front.key, { hmm: false });
       busy.current = false;
       return;
     }
 
-    setPhase("serving");
+    setFlyTo(visitsRef.current.indexOf(target));
+    patch(target.key, { phase: "serving" });
     audio.playBell();
     await sleep(FLY_MS);
     if (!alive.current) return;
@@ -184,40 +217,42 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
     heartsRef.current = after;
     storeHearts(after);
     onHearts(after);
-    setPhase("happy");
+    setBuild(emptyBuild());
+    patch(target.key, { phase: "happy" });
     audio.playYum();
     await sleep(HAPPY_MS);
     if (!alive.current) return;
 
-    setPhase("leaving");
+    patch(target.key, { phase: "leaving" });
     audio.playBye();
     await sleep(LEAVE_MS);
     if (!alive.current) return;
+    updateVisits(vs => vs.filter(v => v.key !== target.key));
 
     const won = rewardsBetween(before, after);
     if (won.length > 0) {
-      setVisit(null);
       setReward(won[0]);
       audio.playReward();
       return;
     }
-    void bringCustomer();
-  }, [visit, phase, build, onHearts, bringCustomer]);
+    void fill();
+  }, [front, build, spec.orderMatters, patch, updateVisits, onHearts, fill]);
 
   const closeReward = useCallback(() => {
     if (!reward) return;
     audio.playTick();
     const item: RewardItem = reward;
     setReward(null);
-    // The first order after a reward uses the new thing (a new friend just comes in).
-    void bringCustomer(item.kind === "customer" ? undefined : item);
-  }, [reward, bringCustomer]);
+    // The next order uses the new thing (a new friend just comes in).
+    void fill(item.kind === "customer" ? undefined : item);
+  }, [reward, fill]);
 
   // ---- render --------------------------------------------------------------
 
-  const have = unlocked(visit ? visit.hearts : heartsRef.current);
-  const ready = visit !== null && phase === "order" && helper && matches(visit.order, build);
-  const trayDisabled = phase !== "order" || reward !== null;
+  const have = unlocked(visits.length > 0 ? Math.min(...visits.map(v => v.hearts)) : heartsRef.current);
+  const ready = front !== null && helper && visits.some(v => v.phase === "order" && matches(v.order, build, spec.orderMatters));
+  const serving = visits.some(v => v.phase === "serving");
+  const trayDisabled = front === null || busy.current || reward !== null;
 
   return (
     <div className="screen shop-bg">
@@ -262,8 +297,12 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
       </div>
 
       <div className="scene">
-        <div className="stage stage-customer">
-          {visit && <Customer id={visit.customer} order={visit.order} phase={phase} hmm={hmm} />}
+        <div className="awning" aria-hidden="true" />
+        <div className="floor" aria-hidden="true" />
+        <div className={`stage stage-customer ${spec.queue > 1 ? "is-queue" : ""}`}>
+          {visits.map((v, i) => (
+            <Customer key={v.key} id={v.customer} order={v.order} phase={v.phase} hmm={v.hmm} front={spec.queue > 1 && v === front && !serving} />
+          ))}
         </div>
         <div className="stage stage-counter">
           <div className="counter-top">
@@ -271,8 +310,9 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
               cone={build.cone}
               scoops={build.scoops}
               toppings={build.toppings}
-              ghost={phase === "order"}
-              className={`build ${phase === "serving" ? "is-flying" : ""} ${phase === "happy" || phase === "leaving" ? "is-gone" : ""}`}
+              ghost={front !== null && level < 3}
+              className={`build ${serving ? "is-flying" : ""}`}
+              style={{ ["--fly-x" as string]: spec.queue > 1 ? (flyTo === 0 ? "-75%" : "-165%") : "-90%" }}
             />
           </div>
           <div className="counter-buttons">
@@ -295,11 +335,22 @@ export function Shop({ hearts, onHearts, helper, smallOrders, onHome }: ShopProp
               🔔
             </button>
           </div>
-          <div className="counter" aria-hidden="true" />
+          <div className="counter" aria-hidden="true">
+            <div className="counter-front" />
+          </div>
         </div>
       </div>
 
-      <Palette have={have} order={visit?.order ?? null} build={build} helper={helper} disabled={trayDisabled} nope={nope} onTap={tapItem} />
+      <Palette
+        have={have}
+        order={front?.order ?? null}
+        build={build}
+        helper={helper}
+        orderMatters={spec.orderMatters}
+        disabled={trayDisabled}
+        nope={nope}
+        onTap={tapItem}
+      />
 
       {reward && <RewardPopup reward={reward} onClose={closeReward} />}
     </div>

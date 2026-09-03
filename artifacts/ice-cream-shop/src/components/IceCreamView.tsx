@@ -1,6 +1,6 @@
 /**
  * Draws an ice cream (cone or cup, up to three scoops, toppings) as SVG.
- * The same pieces make the small icons on the trays and in the menu board.
+ * The same pieces make the tubs, jars and cones on the trays and the menu board.
  */
 import { useId } from "react";
 import type { CSSProperties } from "react";
@@ -9,7 +9,7 @@ import type { ConeId, FlavorId, ToppingId } from "@/game/catalog";
 
 const CX = 100;
 const R = 46;
-const SCOOP_Y: Record<"cone" | "cup", number[]> = { cone: [170, 122, 74], cup: [160, 112, 64] };
+const SCOOP_Y: Record<"cone" | "cup", number[]> = { cone: [168, 120, 72], cup: [158, 110, 62] };
 const CONE_PATH = "M52 176 L148 176 L100 292 Z";
 const CUP_PATH = "M44 176 L156 176 L142 292 L58 292 Z";
 const DIP_PATH =
@@ -31,15 +31,31 @@ function useUid(): string {
   return "ic" + useId().replace(/[^a-zA-Z0-9]/g, "");
 }
 
+/** A scoop: round on top, four soft bumps underneath like a real scoop. */
+function scoopPath(cx: number, cy: number, r: number): string {
+  let d = `M${cx - r} ${cy} A${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+  const bumps = 4;
+  for (let k = 0; k < bumps; k++) {
+    const mid = (Math.PI * (k + 0.5)) / bumps;
+    const end = (Math.PI * (k + 1)) / bumps;
+    const qx = cx + 1.24 * r * Math.cos(mid);
+    const qy = cy + 1.24 * r * Math.sin(mid);
+    d += ` Q${qx.toFixed(1)} ${qy.toFixed(1)} ${(cx + r * Math.cos(end)).toFixed(1)} ${(cy + r * Math.sin(end)).toFixed(1)}`;
+  }
+  return d + " Z";
+}
+
 interface ScoopProps {
   flavor: FlavorId;
   cx: number;
   cy: number;
   r: number;
   uid: string;
+  /** Plain circle (for tubs, where the bottom is hidden anyway). */
+  round?: boolean;
 }
 
-function Scoop({ flavor, cx, cy, r, uid }: ScoopProps) {
+export function Scoop({ flavor, cx, cy, r, uid, round }: ScoopProps) {
   const f = FLAVORS[flavor];
   const gid = `${uid}-${flavor}`;
   return (
@@ -53,14 +69,18 @@ function Scoop({ flavor, cx, cy, r, uid }: ScoopProps) {
             ])}
           </linearGradient>
         ) : (
-          <radialGradient id={gid} cx="0.38" cy="0.32" r="0.78">
+          <radialGradient id={gid} cx="0.38" cy="0.3" r="0.8">
             <stop offset="0" stopColor={f.light} />
-            <stop offset="0.55" stopColor={f.color} />
+            <stop offset="0.5" stopColor={f.color} />
             <stop offset="1" stopColor={f.dark} />
           </radialGradient>
         )}
       </defs>
-      <circle cx={cx} cy={cy} r={r} fill={`url(#${gid})`} stroke={f.dark} strokeWidth={r * 0.05} strokeOpacity="0.55" />
+      {round ? (
+        <circle cx={cx} cy={cy} r={r} fill={`url(#${gid})`} stroke={f.dark} strokeWidth={r * 0.05} strokeOpacity="0.55" />
+      ) : (
+        <path d={scoopPath(cx, cy, r)} fill={`url(#${gid})`} stroke={f.dark} strokeWidth={r * 0.05} strokeOpacity="0.55" strokeLinejoin="round" />
+      )}
       {f.specks && SPECKS.map(([dx, dy], i) => <circle key={i} cx={cx + dx * r} cy={cy + dy * r} r={r * 0.05} fill={f.specks} opacity="0.85" />)}
       <ellipse
         cx={cx - r * 0.32}
@@ -91,6 +111,7 @@ function Cone({ cone, uid }: { cone: ConeId; uid: string }) {
           {[0, 1, 2, 3, 4].map(i => (
             <rect key={i} x={50 + i * 22} y="170" width="11" height="130" fill={c.dark} opacity="0.7" />
           ))}
+          <path d="M44 176 L80 176 L70 292 L58 292 Z" fill="#fff" opacity="0.35" />
         </g>
         <path d={CUP_PATH} fill="none" stroke={c.dark} strokeWidth="3" strokeLinejoin="round" />
         <ellipse cx={CX} cy={176} rx={56} ry={9} fill="#fff" stroke={c.dark} strokeWidth="3" />
@@ -118,6 +139,8 @@ function Cone({ cone, uid }: { cone: ConeId; uid: string }) {
             ))}
           </g>
         )}
+        <path d="M52 176 L84 176 L100 292 Z" fill="#fff" opacity="0.22" />
+        <path d="M120 176 L148 176 L100 292 Z" fill="#000" opacity="0.1" />
         {c.dip && <path d={DIP_PATH} fill={c.dip} />}
       </g>
       <path d={CONE_PATH} fill="none" stroke={c.dark} strokeWidth="3" strokeLinejoin="round" />
@@ -223,75 +246,101 @@ export interface IceCreamViewProps {
   ghost?: boolean;
 }
 
-/** A whole ice cream, in a 200 by 300 box. */
+/** A whole ice cream, in a 200 by 300 box. New pieces pop in. */
 export function IceCreamView({ cone, scoops, toppings, className, style, ghost }: IceCreamViewProps) {
   const uid = useUid();
   const shape = cone ? CONES[cone].shape : "cone";
   const ys = SCOOP_Y[shape];
   const top = scoops.length > 0 ? ys[scoops.length - 1] : null;
+  const scoopAt = (i: number) => (
+    <g key={`${i}-${scoops[i]}`} className="pop" style={{ transformOrigin: `${CX}px ${ys[i] + R}px` }}>
+      <Scoop flavor={scoops[i]} cx={CX} cy={ys[i]} r={R} uid={uid} />
+    </g>
+  );
   return (
     <svg viewBox="0 0 200 300" className={className} style={style} aria-hidden="true">
       {!cone && ghost && (
         <g fill="none" stroke="#9ca3af" strokeWidth="3" strokeDasharray="8 8" opacity="0.5">
           <path d={CONE_PATH} />
-          <circle cx={CX} cy={170} r={R} />
+          <circle cx={CX} cy={168} r={R} />
         </g>
       )}
       {shape === "cup" ? (
         <>
-          {scoops[0] && <Scoop flavor={scoops[0]} cx={CX} cy={ys[0]} r={R} uid={uid} />}
-          {cone && <Cone cone={cone} uid={uid} />}
-          {scoops.slice(1).map((f, i) => (
-            <Scoop key={i + 1} flavor={f} cx={CX} cy={ys[i + 1]} r={R} uid={uid} />
-          ))}
+          {scoops[0] && scoopAt(0)}
+          {cone && (
+            <g key={cone} className="pop" style={{ transformOrigin: `${CX}px 292px` }}>
+              <Cone cone={cone} uid={uid} />
+            </g>
+          )}
+          {scoops.slice(1).map((_, i) => scoopAt(i + 1))}
         </>
       ) : (
         <>
-          {cone && <Cone cone={cone} uid={uid} />}
-          {scoops.map((f, i) => (
-            <Scoop key={i} flavor={f} cx={CX} cy={ys[i]} r={R} uid={uid} />
-          ))}
+          {cone && (
+            <g key={cone} className="pop" style={{ transformOrigin: `${CX}px 292px` }}>
+              <Cone cone={cone} uid={uid} />
+            </g>
+          )}
+          {scoops.map((_, i) => scoopAt(i))}
         </>
       )}
-      {top !== null && <Toppings toppings={toppings} cx={CX} cy={top} r={R} />}
+      {top !== null && (
+        <g key={toppings.join(",")} className={toppings.length ? "pop" : ""} style={{ transformOrigin: `${CX}px ${top}px` }}>
+          <Toppings toppings={toppings} cx={CX} cy={top} r={R} />
+        </g>
+      )}
     </svg>
   );
 }
 
-/** One scoop on its own, for the flavour tray and the menu board. */
-export function ScoopIcon({ flavor, className }: { flavor: FlavorId; className?: string }) {
+/** A tub of one flavour with a scoop sitting in it, for the flavour tray and the menu board. */
+export function TubIcon({ flavor, className }: { flavor: FlavorId; className?: string }) {
   const uid = useUid();
+  const f = FLAVORS[flavor];
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
-      <Scoop flavor={flavor} cx={50} cy={50} r={44} uid={uid} />
+      <ellipse cx={50} cy={48} rx={30} ry={9} fill={f.dark} opacity="0.5" />
+      <Scoop flavor={flavor} cx={50} cy={30} r={25} uid={uid} round />
+      <path d="M20 48 L26 92 Q50 99 74 92 L80 48 Z" fill="#fafafa" stroke="#cbd5e1" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M23 62 L77 62 L75 77 Q50 83 25 77 Z" fill={f.stripes ? f.stripes[0] : f.color} />
+      {f.stripes && <path d="M24 70 L76 70 L75 77 Q50 83 25 77 Z" fill={f.stripes[3]} />}
+      <ellipse cx={50} cy={48} rx={30} ry={9} fill="#f8fafc" stroke="#cbd5e1" strokeWidth="2" />
+      <ellipse cx={50} cy={48} rx={22} ry={5} fill={f.stripes ? f.stripes[2] : f.color} opacity="0.8" />
     </svg>
   );
 }
 
-/** A topping on a plain white scoop, for the topping tray and the menu board. */
-export function ToppingIcon({ topping, className }: { topping: ToppingId; className?: string }) {
-  const uid = useUid();
+/** A glass bowl of one topping, for the topping tray and the menu board. */
+export function JarIcon({ topping, className }: { topping: ToppingId; className?: string }) {
+  const point = topping === "cherry" || topping === "candy" || topping === "cookie";
   return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <defs>
-        <radialGradient id={uid + "-plain"} cx="0.38" cy="0.32" r="0.78">
-          <stop offset="0" stopColor="#ffffff" />
-          <stop offset="0.6" stopColor="#f3f4f6" />
-          <stop offset="1" stopColor="#d1d5db" />
-        </radialGradient>
-      </defs>
-      <circle cx={60} cy={72} r={40} fill={`url(#${uid}-plain)`} stroke="#d1d5db" strokeWidth="2" />
-      <Toppings toppings={[topping]} cx={60} cy={72} r={40} />
+    <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
+      <path d="M16 50 A34 34 0 0 0 84 50 Z" fill="#dbeafe" stroke="#93c5fd" strokeWidth="2.5" />
+      {topping !== "sauce" && <ellipse cx={50} cy={54} rx={28} ry={9} fill="#fff7ed" stroke="#fed7aa" strokeWidth="1.5" />}
+      {topping === "sauce" ? (
+        <g>
+          <ellipse cx={50} cy={52} rx={30} ry={10} fill="#5b3a1e" />
+          <ellipse cx={42} cy={49} rx={9} ry={3} fill="#fff" opacity="0.3" />
+        </g>
+      ) : (
+        <Toppings toppings={[topping]} cx={50} cy={point ? 72 : 62} r={point ? 22 : 24} />
+      )}
+      <ellipse cx={50} cy={50} rx={34} ry={7} fill="none" stroke="#bfdbfe" strokeWidth="2" />
+      <path d="M24 60 Q28 76 40 82" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
     </svg>
   );
 }
 
-/** An empty cone or cup, for the cone tray and the menu board. */
+/** An empty cone or cup standing in a holder, for the cone tray and the menu board. */
 export function ConeIcon({ cone, className }: { cone: ConeId; className?: string }) {
   const uid = useUid();
   return (
-    <svg viewBox="30 150 140 150" className={className} aria-hidden="true">
+    <svg viewBox="26 150 148 156" className={className} aria-hidden="true">
+      <ellipse cx={100} cy={224} rx={58} ry={14} fill="#fbbf24" stroke="#b45309" strokeWidth="3" />
       <Cone cone={cone} uid={uid} />
+      <path d="M42 224 A58 14 0 0 0 158 224" fill="none" stroke="#f59e0b" strokeWidth="9" />
+      <path d="M42 224 A58 14 0 0 0 158 224" fill="none" stroke="#b45309" strokeWidth="2" transform="translate(0 5)" opacity="0.6" />
     </svg>
   );
 }

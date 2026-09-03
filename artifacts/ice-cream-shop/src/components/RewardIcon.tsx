@@ -1,22 +1,19 @@
 import { CONES, CUSTOMERS, FLAVORS, TOPPINGS } from "@/game/catalog";
 import type { RewardItem } from "@/game/rewards";
-import { ConeIcon, ScoopIcon, ToppingIcon } from "./IceCreamView";
+import { Critter } from "./Critter";
+import { ConeIcon, JarIcon, TubIcon } from "./IceCreamView";
 
-/** A picture of a reward: an empty cone, a scoop, a topping on a scoop, or a friend. */
+/** A picture of a reward: a cone in its holder, a tub, a jar, or a friend. */
 export function RewardIcon({ item, className }: { item: RewardItem; className?: string }) {
   switch (item.kind) {
     case "cone":
       return <ConeIcon cone={item.id} className={className} />;
     case "flavor":
-      return <ScoopIcon flavor={item.id} className={className} />;
+      return <TubIcon flavor={item.id} className={className} />;
     case "topping":
-      return <ToppingIcon topping={item.id} className={className} />;
+      return <JarIcon topping={item.id} className={className} />;
     case "customer":
-      return (
-        <span className={`reward-emoji ${className ?? ""}`} role="img" aria-label={CUSTOMERS[item.id].name}>
-          {CUSTOMERS[item.id].emoji}
-        </span>
-      );
+      return <Critter id={item.id} mood="happy" className={className} />;
   }
 }
 

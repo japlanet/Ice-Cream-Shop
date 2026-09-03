@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface ParentPanelProps {
   helper: boolean;
-  smallOrders: boolean;
   onToggleHelper: () => void;
-  onToggleSmall: () => void;
   onErase: () => void;
   onClose: () => void;
 }
@@ -32,7 +30,7 @@ function Toggle({ on, label, hint, onChange }: { on: boolean; label: string; hin
 }
 
 /** Grown-up settings and a hold-to-erase button a child cannot trigger by accident. */
-export function ParentPanel({ helper, smallOrders, onToggleHelper, onToggleSmall, onErase, onClose }: ParentPanelProps) {
+export function ParentPanel({ helper, onToggleHelper, onErase, onClose }: ParentPanelProps) {
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
   const timer = useRef<number | null>(null);
@@ -67,7 +65,9 @@ export function ParentPanel({ helper, smallOrders, onToggleHelper, onToggleSmall
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bounce-in modal-card rounded-3xl p-6 max-w-sm w-full border-4 border-gray-200" onClick={e => e.stopPropagation()}>
         <h2 className="text-2xl font-black text-gray-800 mb-1">For grown-ups</h2>
-        <p className="text-sm font-semibold text-gray-500 mb-4">There is never a timer. Changes apply to the next customer.</p>
+        <p className="text-sm font-semibold text-gray-500 mb-4">
+          There is never a timer. Easy, Medium and Hard are chosen on the home screen; hearts and rewards are shared between them.
+        </p>
         <div className="flex flex-col gap-3">
           <Toggle
             on={helper}
@@ -75,7 +75,6 @@ export function ParentPanel({ helper, smallOrders, onToggleHelper, onToggleSmall
             hint="Only the right things light up, and wrong ones just wobble. Off lets mistakes reach the customer."
             onChange={onToggleHelper}
           />
-          <Toggle on={smallOrders} label="Small orders" hint="At most two scoops, even once bigger orders have been earned." onChange={onToggleSmall} />
         </div>
         <div className="mt-5">
           <button
