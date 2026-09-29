@@ -31,6 +31,8 @@ then rings the bell. There is no timer, no score to lose, and no reading needed.
 - Installs to the iPad Home Screen with a proper icon and **plays offline** after the first
   visit (`public/manifest.webmanifest`, `public/sw.js`). Nothing is downloaded during play: the
   ice creams are drawn as SVG, the friends are emoji, and the sound is generated.
+- Fonts (Nunito and Fredoka, SIL Open Font License) are bundled with the game from `@fontsource`, so it
+  makes no requests to Google or any other site, and they work offline too.
 
 ## Layout
 
