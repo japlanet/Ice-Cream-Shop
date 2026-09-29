@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { LEVELS, LEVEL_ORDER } from "@/game/levels";
 import type { Level } from "@/game/levels";
+import type { DecorState } from "@/game/decor";
+import type { ConeId, FlavorId, ToppingId } from "@/game/catalog";
+import { CoinCount } from "./Coins";
 import { Critter } from "./Critter";
+import type { Hat } from "./Critter";
 import { IceCreamView } from "./IceCreamView";
 import { ParentPanel } from "./ParentPanel";
 import { RewardBar } from "./RewardBar";
@@ -12,23 +16,27 @@ interface HomeProps {
   onLevel: (level: Level) => void;
   onPlay: () => void;
   onMenu: () => void;
+  onDecorate: () => void;
+  decor: DecorState;
   helper: boolean;
   onToggleHelper: () => void;
   onEraseAll: () => void;
 }
 
-/** A picture of each level: one scoop, two scoops in order, three with toppings and a queue. */
-const LEVEL_PICTURES: Record<Level, { cone: "cone" | "cup"; scoops: ("strawberry" | "chocolate" | "vanilla")[]; toppings: "sprinkles"[] }> = {
+/** A picture of each level: one scoop, two in order, three with a queue, a four-scoop tower for Super. */
+const LEVEL_PICTURES: Record<Level, { cone: ConeId; scoops: FlavorId[]; toppings: ToppingId[] }> = {
   1: { cone: "cone", scoops: ["strawberry"], toppings: [] },
   2: { cone: "cup", scoops: ["chocolate", "vanilla"], toppings: [] },
   3: { cone: "cone", scoops: ["vanilla", "strawberry", "chocolate"], toppings: ["sprinkles"] },
+  4: { cone: "cone", scoops: ["mint", "strawberry", "vanilla", "chocolate"], toppings: ["whip", "cherry"] },
 };
 
-export function Home({ hearts, level, onLevel, onPlay, onMenu, helper, onToggleHelper, onEraseAll }: HomeProps) {
+export function Home({ hearts, level, onLevel, onPlay, onMenu, onDecorate, decor, helper, onToggleHelper, onEraseAll }: HomeProps) {
   const [parents, setParents] = useState(false);
+  const hat = decor.equipped.hat.replace("hat-", "") as Hat;
 
   return (
-    <div className="screen shop-bg home">
+    <div className="screen shop-bg home" data-awning={decor.equipped.awning} data-wall={decor.equipped.wall} data-counter={decor.equipped.counter}>
       <div className="awning" aria-hidden="true" />
       <div className="safe-top px-4 pb-1 text-center relative">
         <h1 className="title-candy text-5xl mt-6">Ice Cream Shop</h1>
@@ -52,7 +60,7 @@ export function Home({ hearts, level, onLevel, onPlay, onMenu, helper, onToggleH
               >
                 <div className="level-pic">
                   <IceCreamView cone={pic.cone} scoops={pic.scoops} toppings={pic.toppings} className="level-ice" />
-                  {l === 3 && <span className="level-queue">👥</span>}
+                  {l >= 3 && <span className="level-queue">{l === 4 ? "👥👤" : "👥"}</span>}
                 </div>
                 <div className="level-stars" aria-hidden="true">
                   {"⭐".repeat(l)}
@@ -64,14 +72,14 @@ export function Home({ hearts, level, onLevel, onPlay, onMenu, helper, onToggleH
         </div>
 
         <button onClick={onPlay} className="game-btn candy candy-rose play-btn" aria-label={`Open the shop and play on ${LEVELS[level].name}`}>
-          <Critter id="bear" mood="happy" className="play-critter" />
+          <Critter id="bear" mood="happy" hat={hat} className="play-critter" />
           <div className="play-label">
             <span className="text-5xl" aria-hidden="true">
               🍦
             </span>
             <span className="text-4xl font-black text-rose-900 drop-shadow-sm">Play</span>
           </div>
-          <Critter id="bunny" mood="happy" className="play-critter" />
+          <Critter id="bunny" mood="happy" hat={hat} className="play-critter" />
         </button>
 
         <div className="flex items-center gap-4 max-w-md w-full justify-center">
@@ -85,9 +93,19 @@ export function Home({ hearts, level, onLevel, onPlay, onMenu, helper, onToggleH
             </span>
             <span className="text-2xl font-black text-sky-900">Menu</span>
           </button>
-          <div className="bg-white/70 rounded-3xl px-4 py-3">
-            <RewardBar hearts={hearts} />
-          </div>
+          <button
+            onClick={onDecorate}
+            className="game-btn candy candy-amber rounded-3xl px-5 py-3 bg-gradient-to-b from-amber-100 to-amber-300 flex items-center gap-2"
+            aria-label={`Decorate the shop. You have ${decor.coins} coins.`}
+          >
+            <span className="text-4xl" role="img" aria-hidden="true">
+              🎨
+            </span>
+            <CoinCount coins={decor.coins} />
+          </button>
+        </div>
+        <div className="bg-white/70 rounded-3xl px-4 py-3">
+          <RewardBar hearts={hearts} />
         </div>
       </div>
 

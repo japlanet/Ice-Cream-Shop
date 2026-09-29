@@ -3,7 +3,7 @@
  * hearts something new arrives: a flavour, a topping, a cone, or a new
  * friend who starts visiting the shop.
  */
-import { CONE_ORDER, CUSTOMER_ORDER, FLAVOR_ORDER, STARTER, TOPPING_ORDER } from "./catalog.ts";
+import { CONE_ORDER, CUSTOMER_ORDER, FLAVOR_ORDER, STARTER, TOPPING_ORDER, TREATS } from "./catalog.ts";
 import type { ConeId, CustomerId, FlavorId, ToppingId } from "./catalog.ts";
 
 export type RewardItem =
@@ -35,6 +35,13 @@ export const REWARDS: Reward[] = [
   { at: 260, kind: "customer", id: "unicorn" },
   { at: 280, kind: "flavor", id: "rainbow" },
   { at: 300, kind: "customer", id: "dragon" },
+  { at: 315, kind: "flavor", id: "pistachio" },
+  { at: 330, kind: "topping", id: "whip" },
+  { at: 345, kind: "customer", id: "mouse" },
+  { at: 360, kind: "flavor", id: "cottoncandy" },
+  { at: 375, kind: "topping", id: "wafer" },
+  { at: 390, kind: "customer", id: "monkey" },
+  { at: 405, kind: "customer", id: "hedgehog" },
 ];
 
 export interface Unlocked {
@@ -50,7 +57,7 @@ export function unlocked(hearts: number): Unlocked {
   for (const k of ["cones", "flavors", "toppings", "customers"] as const) for (const id of STARTER[k]) have.add(k + ":" + id);
   for (const r of REWARDS) if (hearts >= r.at) have.add(KIND_KEY[r.kind] + ":" + r.id);
   return {
-    cones: CONE_ORDER.filter(id => have.has("cones:" + id)),
+    cones: CONE_ORDER.filter(id => !TREATS.includes(id) && have.has("cones:" + id)),
     flavors: FLAVOR_ORDER.filter(id => have.has("flavors:" + id)),
     toppings: TOPPING_ORDER.filter(id => have.has("toppings:" + id)),
     customers: CUSTOMER_ORDER.filter(id => have.has("customers:" + id)),

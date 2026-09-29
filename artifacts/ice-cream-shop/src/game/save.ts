@@ -2,6 +2,8 @@
  * Hearts (happy customers so far) live in localStorage so the shop keeps
  * everything it has earned between visits.
  */
+import { freshDecor, isDecorState } from "./decor.ts";
+import type { DecorState } from "./decor.ts";
 import { isLevel } from "./levels.ts";
 import type { Level } from "./levels.ts";
 
@@ -33,7 +35,7 @@ export function storeHearts(hearts: number): void {
   } catch {}
 }
 
-/** Everything this game ever stored: hearts, settings, sound toggles. */
+/** Everything this game ever stored: hearts, coins and decorations, settings, sound toggles. */
 export function eraseAllProgress(): void {
   const s = storage();
   if (!s) return;
@@ -61,5 +63,25 @@ export function loadLevel(): Level {
 export function storeLevel(level: Level): void {
   try {
     storage()?.setItem(LEVEL_KEY, String(level));
+  } catch {}
+}
+
+export const DECOR_KEY = PREFIX + "decor";
+
+/** Coins and decorations, or a fresh shop when nothing valid is saved. */
+export function loadDecor(): DecorState {
+  try {
+    const raw = storage()?.getItem(DECOR_KEY);
+    if (!raw) return freshDecor();
+    const parsed: unknown = JSON.parse(raw);
+    return isDecorState(parsed) ? parsed : freshDecor();
+  } catch {
+    return freshDecor();
+  }
+}
+
+export function storeDecor(state: DecorState): void {
+  try {
+    storage()?.setItem(DECOR_KEY, JSON.stringify(state));
   } catch {}
 }

@@ -6,19 +6,31 @@ then rings the bell. There is no timer, no score to lose, and no reading needed.
 
 - **Orders are pictures.** The friend's bubble shows the exact ice cream. The friends are drawn
   animals that blink, beam when served and look puzzled when the order is wrong.
-- **Three ways to play**, picked on the home screen and remembered. None has a timer.
+- **Four ways to play**, picked on the home screen and remembered. None has a timer.
   - ⭐ **Easy**: one or two scoops, stacked any way up, at most one topping.
   - ⭐⭐ **Medium**: up to three scoops that must be stacked bottom to top as shown, two toppings.
-  - ⭐⭐⭐ **Hard**: as Medium, with two friends waiting at once. Whichever friend's order the
-    ice cream matches takes it; the helper points at the one in front (yellow name tag).
+  - ⭐⭐⭐ **Hard**: as Medium, with two friends waiting at once, and sundaes and milkshakes on
+    the menu. Whichever friend's order the treat matches takes it; the helper points at the one
+    in front (yellow name tag).
+  - ⭐⭐⭐⭐ **Super**: three friends waiting, up to four scoops and three toppings, and about a
+    third of friends order two things at once (each gets a ✅ as it is served). Orders show for a
+    few seconds and then hide in a thought cloud: tap the friend to see it again. The helper
+    stays off here, since the point is remembering.
+- **Sundaes and milkshakes** (Hard and Super). A sundae bowl holds up to three scoops side by
+  side, in any order. A milkshake takes one or two scoops, then a tap on the blender, then its
+  toppings.
+- **Coins and decorating.** Each thing served pays coins: one for the container, one per scoop
+  and topping, two more for a treat, and a tip of two for getting it right first time. On the
+  🎨 screen coins buy awnings, wallpaper, counters, and hats that every friend wears (party
+  hats, bows, flowers, chef hats, crowns). Tapping something already bought puts it up again.
 - **The little helper** (on by default) lights up the things the order still needs and dims the
   rest. A wrong tap just wobbles with a soft boop and nothing goes on. With the helper off
   (Parents panel), anything can be built; a wrong order makes the friend go "hmm?" with a ❓ and
   the child can fix it with the ↩️ button. Nothing is ever lost.
-- **Every happy customer is a heart.** Every 10 to 20 hearts something new arrives, with
+- **Every ice cream served is a heart.** Every 10 to 20 hearts something new arrives, with
   confetti: a topping, a flavour, a cone, or a new friend who starts visiting. The very next
   order uses the new thing. The shop opens with a cone, a cup and three flavours and grows to
-  four cones, nine flavours, five toppings and twelve friends over 300 hearts.
+  four cones, eleven flavours, seven toppings and fifteen friends over 405 hearts.
 - **Orders grow gently.** One scoop and no toppings for the first ten customers, then two
   scoops sometimes, then three from thirty hearts (on Medium and Hard).
 - The **menu board** on the home screen shows everything earned and what is still locked, with
@@ -43,7 +55,8 @@ lives in `artifacts/ice-cream-shop`.
 | --- | --- |
 | `src/game/catalog.ts` | Cones, flavours, toppings and friends: names, colours, the starter set. |
 | `src/game/rewards.ts` | The reward ladder and what is unlocked at a given number of hearts. |
-| `src/game/levels.ts` | Easy, Medium and Hard: scoop counts, order-matters, how many friends wait. |
+| `src/game/levels.ts` | Easy, Medium, Hard and Super: scoop counts, order-matters, queue, treats, doubles, memory. |
+| `src/game/decor.ts` | The decorations shop: prices, buying and putting things up, save checking. |
 | `src/game/engine.ts` | The rules: building, undo, matching, the helper, order generation. Pure functions. |
 | `src/game/*.test.ts` | Unit tests, including a random-play check that following the helper always completes an order. |
 | `src/game/save.ts` | Hearts in localStorage, and erase-all. |

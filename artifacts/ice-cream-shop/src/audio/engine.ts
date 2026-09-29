@@ -74,18 +74,25 @@ class AudioEngine {
   unlock(): void {
     const ctx = this.ensure();
     if (!ctx) return;
-    void ctx.resume();
+    ctx.resume().catch(() => undefined);
     this.unlocked = true;
     if (this.musicEnabled) this.startMusic();
   }
 
   setHidden(hidden: boolean): void {
     if (!this.ctx || !this.unlocked) return;
-    if (hidden) void this.ctx.suspend();
-    else void this.ctx.resume();
+    if (hidden) this.ctx.suspend().catch(() => undefined);
+    else this.ctx.resume().catch(() => undefined);
   }
 
+  /** Sound is an extra: if the iPad's audio is interrupted and a call throws, skip the sound, never the game. */
   private tone(o: ToneOptions): void {
+    try {
+      this.toneUnsafe(o);
+    } catch {}
+  }
+
+  private toneUnsafe(o: ToneOptions): void {
     const ctx = this.ctx;
     const dest = o.dest ?? this.sfxGain;
     if (!ctx || !dest) return;
@@ -125,6 +132,12 @@ class AudioEngine {
   }
 
   private burst(duration: number, start: number, gain: number, filterFreq: number, type: BiquadFilterType = "lowpass"): void {
+    try {
+      this.burstUnsafe(duration, start, gain, filterFreq, type);
+    } catch {}
+  }
+
+  private burstUnsafe(duration: number, start: number, gain: number, filterFreq: number, type: BiquadFilterType = "lowpass"): void {
     const ctx = this.ctx;
     if (!ctx || !this.noise || !this.sfxGain) return;
     const t0 = ctx.currentTime + start;
@@ -243,6 +256,28 @@ class AudioEngine {
     notes.forEach((m, i) => this.bell(midiHz(m), i * 0.11, 0.5, 0.22));
     for (const m of [72, 76, 79, 84]) this.tone({ freq: midiHz(m), type: "triangle", duration: 1.2, start: 0.8, gain: 0.07, attack: 0.05 });
     this.tone({ freq: midiHz(96), duration: 1.2, start: 0.85, gain: 0.04, attack: 0.1 });
+  }
+
+  /** Coins into the till: two bright clinks. */
+  playCoin(): void {
+    if (!this.guard()) return;
+    this.bell(midiHz(96), 0.05, 0.25, 0.1);
+    this.bell(midiHz(100), 0.13, 0.35, 0.12);
+  }
+
+  /** The blender: a whirring hum that rises and settles. */
+  playBlend(): void {
+    if (!this.guard()) return;
+    this.burst(0.6, 0, 0.08, 1800, "bandpass");
+    this.tone({ freq: 90, freqEnd: 180, type: "sawtooth", duration: 0.55, gain: 0.06, attack: 0.05, lowpass: 700, vibrato: 18 });
+    this.tone({ freq: 180, freqEnd: 120, type: "triangle", duration: 0.6, gain: 0.05, attack: 0.08 });
+  }
+
+  /** Bought something for the shop: a cash-register ding and a little run up. */
+  playBuy(): void {
+    if (!this.guard()) return;
+    this.burst(0.08, 0, 0.1, 2500, "bandpass");
+    [84, 88, 91, 96].forEach((m, i) => this.bell(midiHz(m), 0.06 + i * 0.07, 0.4, 0.14));
   }
 
   // -----------------------------------------------------------------------

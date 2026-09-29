@@ -1,4 +1,4 @@
-import { CONES, FLAVORS, TOPPINGS } from "@/game/catalog";
+import { CONES, FLAVORS, TOPPINGS, TREATS } from "@/game/catalog";
 import { helperAllows } from "@/game/engine";
 import type { Build, Item, Order } from "@/game/engine";
 import type { Unlocked } from "@/game/rewards";
@@ -11,6 +11,8 @@ interface PaletteProps {
   /** The little helper: only what the order needs lights up. */
   helper: boolean;
   orderMatters: boolean;
+  /** Sundae bowls and milkshake glasses are on the menu. */
+  treats: boolean;
   disabled: boolean;
   /** Item that was just refused, so it can wobble. */
   nope: string | null;
@@ -20,9 +22,10 @@ interface PaletteProps {
 export const itemKey = (item: Item) => item.kind + ":" + item.id;
 
 /** The freezer cabinet along the bottom: cones, tubs of ice cream, jars of toppings. Tap to add. */
-export function Palette({ have, order, build, helper, orderMatters, disabled, nope, onTap }: PaletteProps) {
+export function Palette({ have, order, build, helper, orderMatters, treats, disabled, nope, onTap }: PaletteProps) {
+  const containers = treats ? [...have.cones, ...TREATS] : have.cones;
   const items: { label: string; list: Item[] }[] = [
-    { label: "Cones", list: have.cones.map(id => ({ kind: "cone", id })) },
+    { label: "Cones", list: containers.map(id => ({ kind: "cone", id })) },
     { label: "Ice cream", list: have.flavors.map(id => ({ kind: "scoop", id })) },
     { label: "Toppings", list: have.toppings.map(id => ({ kind: "topping", id })) },
   ];
@@ -66,5 +69,7 @@ function name(item: Item): string {
       return FLAVORS[item.id].name + " scoop";
     case "topping":
       return TOPPINGS[item.id].name;
+    case "blend":
+      return "Blend";
   }
 }

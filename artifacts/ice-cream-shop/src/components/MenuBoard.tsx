@@ -1,4 +1,4 @@
-import { CONES, CONE_ORDER, CUSTOMERS, CUSTOMER_ORDER, FLAVORS, FLAVOR_ORDER, TOPPINGS, TOPPING_ORDER } from "@/game/catalog";
+import { CONES, CONE_ORDER, CUSTOMERS, CUSTOMER_ORDER, FLAVORS, FLAVOR_ORDER, TOPPINGS, TOPPING_ORDER, TREATS } from "@/game/catalog";
 import { unlockAt, unlocked } from "@/game/rewards";
 import type { RewardItem } from "@/game/rewards";
 import { RewardBar } from "./RewardBar";
@@ -40,7 +40,9 @@ export function MenuBoard({ hearts, onBack }: MenuBoardProps) {
             </h2>
             <div className="menu-grid">
               {s.items.map(item => {
-                const got = s.owned.includes(item.id);
+                // Sundaes and milkshakes come with Hard and Super rather than with hearts.
+                const treat = item.kind === "cone" && TREATS.includes(item.id);
+                const got = treat || s.owned.includes(item.id);
                 const at = unlockAt(item.kind, item.id);
                 return (
                   <div key={item.id} className={`menu-item ${got ? "" : "is-locked"}`} aria-label={`${s.names[item.id].name}${got ? "" : `, needs ${at} hearts`}`}>
@@ -53,6 +55,11 @@ export function MenuBoard({ hearts, onBack }: MenuBoardProps) {
                       )}
                     </div>
                     <div className="menu-name">{s.names[item.id].name}</div>
+                    {treat && (
+                      <div className="menu-need" aria-label="On Hard and Super">
+                        ⭐⭐⭐
+                      </div>
+                    )}
                     {!got && at !== null && (
                       <div className="menu-need" aria-hidden="true">
                         ❤️ {at}

@@ -7,9 +7,25 @@ import type { CustomerId } from "@/game/catalog";
 import { CUSTOMER_ORDER } from "@/game/catalog";
 
 export type Mood = "waiting" | "happy" | "hmm";
+export type Hat = "none" | "party" | "bow" | "flower" | "chef" | "crown";
 
-type Ears = "round" | "long" | "pointy" | "floppy" | "fluffy" | "none";
-type Extra = "mane" | "horn" | "whiskers" | "eyepatches" | "spot" | "frogEyes" | "spikes" | "stripes" | "snout" | "muzzle" | "tuft" | "koalaNose" | "belly";
+type Ears = "round" | "long" | "pointy" | "floppy" | "fluffy" | "mouse" | "none";
+type Extra =
+  | "mane"
+  | "horn"
+  | "whiskers"
+  | "eyepatches"
+  | "spot"
+  | "frogEyes"
+  | "spikes"
+  | "stripes"
+  | "snout"
+  | "muzzle"
+  | "tuft"
+  | "koalaNose"
+  | "belly"
+  | "quills"
+  | "face";
 
 interface Spec {
   body: string;
@@ -36,6 +52,9 @@ const SPECS: Record<CustomerId, Spec> = {
   koala: { body: "#aaaab0", dark: "#66666c", light: "#e4e4e7", ears: "fluffy", earInner: "#e8c6cf", nose: "#2b2b2b", cheek: "#f9a8d4", extras: ["koalaNose", "belly"] },
   unicorn: { body: "#fcf4ff", dark: "#c4b5fd", light: "#ffffff", ears: "pointy", earInner: "#f9a8d4", nose: "#e879f9", cheek: "#f9a8d4", extras: ["horn", "tuft", "belly"] },
   dragon: { body: "#72d19a", dark: "#2f8a58", light: "#dcfce7", ears: "none", earInner: "#72d19a", nose: "#2f8a58", cheek: "#fb7185", extras: ["spikes", "belly", "muzzle"] },
+  mouse: { body: "#c7c9d1", dark: "#80838f", light: "#eceef3", ears: "mouse", earInner: "#f9a8d4", nose: "#f472b6", cheek: "#f9a8d4", extras: ["whiskers", "belly"] },
+  monkey: { body: "#a8703f", dark: "#6b4222", light: "#f3d9b5", ears: "round", earInner: "#f3d9b5", nose: "#6b4222", cheek: "#fb923c", extras: ["face", "belly"] },
+  hedgehog: { body: "#e9c89a", dark: "#7a5230", light: "#fbead0", ears: "none", earInner: "#e9c89a", nose: "#3f2a1a", cheek: "#fb7185", extras: ["quills", "muzzle", "belly"] },
 };
 
 const HEAD = { cx: 100, cy: 95, r: 62 };
@@ -53,11 +72,12 @@ function star(cx: number, cy: number, outer: number, inner: number, points: numb
 interface CritterProps {
   id: CustomerId;
   mood?: Mood;
+  hat?: Hat;
   className?: string;
   style?: CSSProperties;
 }
 
-export function Critter({ id, mood = "waiting", className, style }: CritterProps) {
+export function Critter({ id, mood = "waiting", hat = "none", className, style }: CritterProps) {
   const s = SPECS[id];
   const has = (e: Extra) => s.extras.includes(e);
   const earColor = s.earColor ?? s.body;
@@ -74,6 +94,20 @@ export function Critter({ id, mood = "waiting", className, style }: CritterProps
       <ellipse cx={100} cy={226} rx={56} ry={6} fill="#000" opacity="0.12" />
 
       {has("mane") && <polygon points={star(HEAD.cx, HEAD.cy + 2, 88, 74, 14)} fill={s.dark} />}
+      {has("quills") && (
+        <g>
+          <polygon points={star(HEAD.cx, HEAD.cy - 4, 94, 62, 18)} fill={s.dark} />
+          <polygon points={star(HEAD.cx, HEAD.cy - 4, 80, 60, 18)} fill="#9a6b40" transform={`rotate(10 ${HEAD.cx} ${HEAD.cy - 4})`} />
+        </g>
+      )}
+      {s.ears === "mouse" && (
+        <g>
+          <circle cx={46} cy={46} r={32} fill={s.body} stroke={s.dark} strokeWidth="2" strokeOpacity="0.45" />
+          <circle cx={46} cy={46} r={21} fill={s.earInner} />
+          <circle cx={154} cy={46} r={32} fill={s.body} stroke={s.dark} strokeWidth="2" strokeOpacity="0.45" />
+          <circle cx={154} cy={46} r={21} fill={s.earInner} />
+        </g>
+      )}
 
       {s.ears === "round" && (
         <g>
@@ -147,6 +181,7 @@ export function Critter({ id, mood = "waiting", className, style }: CritterProps
         </g>
       )}
       {has("spot") && <ellipse cx={122} cy={92} rx={18} ry={22} fill={s.dark} opacity="0.9" />}
+      {has("face") && <path d="M100 66 C 70 58 50 78 58 100 C 50 124 76 142 100 140 C 124 142 150 124 142 100 C 150 78 130 58 100 66 Z" fill={s.light} />}
       {has("muzzle") && <ellipse cx={100} cy={117} rx={24} ry={17} fill={s.light} />}
       {s.ears === "floppy" && (
         <g>
@@ -206,6 +241,60 @@ export function Critter({ id, mood = "waiting", className, style }: CritterProps
       ) : (
         <path d="M90 122 Q100 131 110 122" fill="none" stroke="#3b2a20" strokeWidth="3.5" strokeLinecap="round" />
       )}
+      <HatArt hat={hat} />
     </svg>
   );
+}
+
+/** A hat perched on top of the head (the head's top is at about y 33). */
+function HatArt({ hat }: { hat: Hat }) {
+  switch (hat) {
+    case "none":
+      return null;
+    case "party":
+      return (
+        <g transform="rotate(-12 100 36)">
+          <path d="M78 40 L100 -8 L122 40 Z" fill="#60a5fa" stroke="#1d4ed8" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M84 28 L116 28 M90 14 L110 14" stroke="#fde047" strokeWidth="6" />
+          <circle cx={100} cy={-10} r={8} fill="#f472b6" />
+          <ellipse cx={100} cy={40} rx={24} ry={5} fill="#1d4ed8" />
+        </g>
+      );
+    case "bow":
+      return (
+        <g transform="translate(128 44) rotate(18)">
+          <path d="M0 0 L-24 -14 Q-30 0 -24 14 Z" fill="#f472b6" stroke="#be185d" strokeWidth="2" strokeLinejoin="round" />
+          <path d="M0 0 L24 -14 Q30 0 24 14 Z" fill="#f472b6" stroke="#be185d" strokeWidth="2" strokeLinejoin="round" />
+          <circle cx={0} cy={0} r={7} fill="#ec4899" stroke="#be185d" strokeWidth="2" />
+        </g>
+      );
+    case "flower":
+      return (
+        <g transform="translate(130 40)">
+          {[0, 72, 144, 216, 288].map(a => (
+            <ellipse key={a} cx={0} cy={-11} rx={8} ry={12} fill="#fde68a" stroke="#f59e0b" strokeWidth="1.5" transform={`rotate(${a})`} />
+          ))}
+          <circle cx={0} cy={0} r={8} fill="#fb923c" />
+        </g>
+      );
+    case "chef":
+      return (
+        <g>
+          <rect x={74} y={20} width={52} height={20} rx={3} fill="#fff" stroke="#cbd5e1" strokeWidth="2" />
+          <circle cx={80} cy={10} r={16} fill="#fff" stroke="#cbd5e1" strokeWidth="2" />
+          <circle cx={100} cy={0} r={18} fill="#fff" stroke="#cbd5e1" strokeWidth="2" />
+          <circle cx={120} cy={10} r={16} fill="#fff" stroke="#cbd5e1" strokeWidth="2" />
+          <rect x={76} y={16} width={48} height={14} fill="#fff" />
+        </g>
+      );
+    case "crown":
+      return (
+        <g>
+          <path d="M72 40 L72 12 L86 26 L100 4 L114 26 L128 12 L128 40 Z" fill="#fcd34d" stroke="#b45309" strokeWidth="2.5" strokeLinejoin="round" />
+          <circle cx={100} cy={28} r={5} fill="#f43f5e" />
+          <circle cx={84} cy={32} r={3.5} fill="#60a5fa" />
+          <circle cx={116} cy={32} r={3.5} fill="#34d399" />
+        </g>
+      );
+  }
 }

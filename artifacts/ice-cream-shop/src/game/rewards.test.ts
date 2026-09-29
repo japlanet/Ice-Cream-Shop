@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { REWARDS, nextReward, rewardProgress, rewardsBetween, unlockAt, unlocked } from "./rewards.ts";
-import { CONE_ORDER, CUSTOMER_ORDER, FLAVOR_ORDER, STARTER, TOPPING_ORDER } from "./catalog.ts";
+import { CONE_ORDER, CUSTOMER_ORDER, FLAVOR_ORDER, STARTER, TOPPING_ORDER, TREATS } from "./catalog.ts";
 
 test("rewards come every 10 to 20 hearts, in increasing order", () => {
   let prev = 0;
@@ -27,7 +27,7 @@ test("every reward is a real catalogue item, given once, and not a starter", () 
 
 test("starters plus rewards cover the whole catalogue", () => {
   const all = unlocked(REWARDS[REWARDS.length - 1].at);
-  assert.deepEqual(all.cones, CONE_ORDER);
+  assert.deepEqual(all.cones, CONE_ORDER.filter(c => !TREATS.includes(c)), "treats come with the level, not with hearts");
   assert.deepEqual(all.flavors, FLAVOR_ORDER);
   assert.deepEqual(all.toppings, TOPPING_ORDER);
   assert.deepEqual(all.customers, CUSTOMER_ORDER);

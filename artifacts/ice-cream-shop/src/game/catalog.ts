@@ -3,15 +3,42 @@
  * set is deliberately small; the rest is earned (see rewards.ts).
  */
 
-export type ConeId = "cone" | "cup" | "choco" | "rainbow";
-export type FlavorId = "vanilla" | "chocolate" | "strawberry" | "mint" | "blueberry" | "lemon" | "bubblegum" | "mango" | "rainbow";
-export type ToppingId = "sprinkles" | "cherry" | "sauce" | "candy" | "cookie";
-export type CustomerId = "bear" | "bunny" | "cat" | "dog" | "pig" | "frog" | "fox" | "panda" | "lion" | "koala" | "unicorn" | "dragon";
+export type ConeId = "cone" | "cup" | "choco" | "rainbow" | "sundae" | "shake";
+export type FlavorId =
+  | "vanilla"
+  | "chocolate"
+  | "strawberry"
+  | "mint"
+  | "blueberry"
+  | "lemon"
+  | "bubblegum"
+  | "mango"
+  | "rainbow"
+  | "pistachio"
+  | "cottoncandy";
+export type ToppingId = "sprinkles" | "cherry" | "sauce" | "candy" | "cookie" | "whip" | "wafer";
+export type CustomerId =
+  | "bear"
+  | "bunny"
+  | "cat"
+  | "dog"
+  | "pig"
+  | "frog"
+  | "fox"
+  | "panda"
+  | "lion"
+  | "koala"
+  | "unicorn"
+  | "dragon"
+  | "mouse"
+  | "monkey"
+  | "hedgehog";
 
 export interface ConeStyle {
   id: ConeId;
   name: string;
-  shape: "cone" | "cup";
+  /** Cones and cups stack scoops; a sundae bowl holds them side by side; a milkshake glass blends them. */
+  shape: "cone" | "cup" | "bowl" | "glass";
   fill: string;
   dark: string;
   /** Chocolate dip band on the rim. */
@@ -58,7 +85,12 @@ export const CONES: Record<ConeId, ConeStyle> = {
     dark: "#b8813a",
     stripes: ["#f87171", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#c084fc"],
   },
+  sundae: { id: "sundae", name: "Sundae bowl", shape: "bowl", fill: "#e0f2fe", dark: "#7dd3fc" },
+  shake: { id: "shake", name: "Milkshake", shape: "glass", fill: "#f0f9ff", dark: "#93c5fd" },
 };
+
+/** Sundaes and milkshakes are on the menu on Hard and Super rather than earned with hearts. */
+export const TREATS: ConeId[] = ["sundae", "shake"];
 
 export const FLAVORS: Record<FlavorId, FlavorStyle> = {
   vanilla: { id: "vanilla", name: "Vanilla", color: "#fdf3cf", light: "#fffdf4", dark: "#e9d59a", specks: "#6b4a2a" },
@@ -77,6 +109,15 @@ export const FLAVORS: Record<FlavorId, FlavorStyle> = {
     dark: "#c084fc",
     stripes: ["#f87171", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#c084fc"],
   },
+  pistachio: { id: "pistachio", name: "Pistachio", color: "#b5d98a", light: "#e0f0c8", dark: "#86b556", specks: "#6b8e3a" },
+  cottoncandy: {
+    id: "cottoncandy",
+    name: "Cotton candy",
+    color: "#f9a8d4",
+    light: "#fde2f0",
+    dark: "#93c5fd",
+    stripes: ["#f9a8d4", "#bfdbfe", "#f9a8d4", "#bfdbfe", "#f9a8d4", "#bfdbfe"],
+  },
 };
 
 export const TOPPINGS: Record<ToppingId, ToppingStyle> = {
@@ -85,6 +126,8 @@ export const TOPPINGS: Record<ToppingId, ToppingStyle> = {
   sauce: { id: "sauce", name: "Chocolate sauce" },
   candy: { id: "candy", name: "Candy", emoji: "🍬" },
   cookie: { id: "cookie", name: "Cookie", emoji: "🍪" },
+  whip: { id: "whip", name: "Whipped cream" },
+  wafer: { id: "wafer", name: "Wafer" },
 };
 
 export const CUSTOMERS: Record<CustomerId, CustomerStyle> = {
@@ -100,6 +143,9 @@ export const CUSTOMERS: Record<CustomerId, CustomerStyle> = {
   koala: { id: "koala", name: "Koala", emoji: "🐨", color: "#d4d4d8" },
   unicorn: { id: "unicorn", name: "Unicorn", emoji: "🦄", color: "#ead9ff" },
   dragon: { id: "dragon", name: "Dragon", emoji: "🐲", color: "#bbf7d0" },
+  mouse: { id: "mouse", name: "Mouse", emoji: "🐭", color: "#e5e7eb" },
+  monkey: { id: "monkey", name: "Monkey", emoji: "🐵", color: "#f5d0a9" },
+  hedgehog: { id: "hedgehog", name: "Hedgehog", emoji: "🦔", color: "#fde3b6" },
 };
 
 export const CONE_ORDER = Object.keys(CONES) as ConeId[];
